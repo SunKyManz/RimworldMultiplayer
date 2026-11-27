@@ -31,8 +31,9 @@ Done and pushed:
 - `Tools/Check-Determinism.ps1`: `-UiNoise`, `-NoiseEvery`, `-DumpTicks`, `-ModIds`; a fresh `-savedatafolder` per run
   (the player's own mod list and saves are never touched); handles the 1.7 engine (`RimWorld.exe`, no headless mode,
   log copied from the run's save folder).
-- `Tools/InterfaceSideEffects`: the static analysis tool. First report (RimWorld 1.7.5021): 545 leads, 20 findings
-  that take unique ids (12 not already covered by an MP patch).
+- `Tools/InterfaceSideEffects`: the static analysis tool (RimWorld 1.7.5021: about 545 leads). Its own status, triage of
+  the top ~35 leads and analyzer improvements are in [Tools/InterfaceSideEffects/PLAN.md](../Tools/InterfaceSideEffects/PLAN.md);
+  this document doesn't repeat them.
 
 Verified on one 1.7.5021 replay (small colony, minimal mods, no recorded commands), 20,000 ticks:
 
@@ -114,16 +115,12 @@ Not verified: replays with recorded commands, bigger colonies, other mods, other
 
 ## Next steps, in order
 
-1. **Confirm the top static leads with the dynamic check.** The report's strongest leads take unique ids from
-   interface code, which desyncs every thing created afterwards. For example:
-   - `Comp_AtmosphericHeater.get_Condition`, reached from `CompTempControl.CompInspectStringExtra`, appears to create
-     and register a `GameCondition` (with a unique id) from an inspect string.
-   - `CompStatue.InitializeAsFactionLeaderStatue` from `CompStatue.DrawAt` (unique ids and Rand while drawing).
-   - `CompTechprint.CompFloatMenuOptions` makes a `Job` (a job id) while building the float menu.
-
-   For each: check the code, then record a short replay that contains the thing (an atmospheric heater, a faction
-   leader statue, a techprint), and run the check with `-UiNoise`. Fix confirmed ones the way `Patches/Determinism.cs`
-   does (skip or isolate in the interface), and add the method to `UiNoise` if the noise didn't already reach it.
+1. **Reproduce the confirmed static leads in game, then fix them.** `PLAN.md` lists three desyncs confirmed in IL
+   (not yet in game): `Comp_AtmosphericHeater.get_Condition` registering a game condition from an inspect string,
+   `CompStatue.DrawAt` initializing a faction leader statue while drawing, and `GeneSet.GenerateName` using whichever
+   `Rand` reads the label first. For the heater, record a replay with an unpowered or unfueled atmospheric heater and
+   run `-UiNoise`: the noise reads inspect strings, so it should diverge before the fix and match after it. The statue
+   is reached only by drawing, which UiNoise doesn't do yet (step 2). Fix ideas are in `PLAN.md`.
 
 2. **Make UiNoise reach more of what the static tool covers.** It doesn't yet run `ITab.FillTab`, window contents,
    designators, pawn table columns or drawing, because those need the GUI. On 1.7 every run has a window, so try calling
@@ -150,6 +147,11 @@ Not verified: replays with recorded commands, bigger colonies, other mods, other
   unchanged.
 - **The Arbiter on 1.7.** `HostUtil.StartArbiter` passes `-batchmode -nographics`, which the 1.7 engine doesn't seem to
   support, so the Arbiter probably opens a visible window there. Not tested.
+- **UiNoise isn't covered by the unique-id guard.** `Patches/UniqueIDsManagerGuard.cs` rolls back ids taken inside
+  `UIRoot_Play.UIRootOnGUI`. UiNoise runs between ticks, outside that, so an id it takes stays taken. A divergence that
+  comes down to a shifted id may be one real play rolls back (for example jobs made while building float menus); check
+  whether the real call path runs inside `UIRootOnGUI` before treating it as a desync. Running the noise inside a real
+  OnGUI pass (step 2) would remove this difference.
 - **Interface `Rand` use is mostly harmless.** Because maps and the world restore their own random state at each tick,
   the interface's `Rand` calls don't shift the simulation's numbers. They matter only when the result is stored in
   simulation state (as in the static report's leads).
