@@ -12,13 +12,17 @@ namespace Multiplayer.Client
         const int NumButtons = 5;
         const float ButtonsWidth = 120 * NumButtons + 10 * (NumButtons - 1);
 
-        public override Vector2 InitialSize => new(30 + 130 * NumButtons, 110);
+        const float LabelHeight = 60;
+
+        public override Vector2 InitialSize => new(30 + 130 * NumButtons, 70 + LabelHeight);
 
         private string text;
         private readonly SaveableDesyncInfo desyncInfo;
         private float openedAt;
         private bool infoWritten;
         private bool rejoining;
+        private bool autoResyncDecided;
+        private bool autoResyncing;
         [CanBeNull] private SaveableDesyncInfo.HostInfo hostInfo;
 
         public DesyncedWindow(string text, SaveableDesyncInfo desyncInfo)
@@ -47,20 +51,17 @@ namespace Multiplayer.Client
             var label = "MpDesynced".Translate();
             if (MpVersion.IsDebug || Prefs.DevMode) label += "\n" + text;
             else label += "\n" + "MpDesyncedSubtitle".Translate();
-            Widgets.Label(new Rect(0, 0, inRect.width, 40), label);
+            if (AutoResyncStatus() is { } status) label += "\n" + status;
+            Widgets.Label(new Rect(0, 0, inRect.width, LabelHeight), label);
             Text.Anchor = TextAnchor.UpperLeft;
 
-            var buttonsRect = new Rect((inRect.width - ButtonsWidth) / 2, 40, ButtonsWidth, 35);
+            var buttonsRect = new Rect((inRect.width - ButtonsWidth) / 2, LabelHeight, ButtonsWidth, 35);
 
             GUI.BeginGroup(buttonsRect);
 
             float x = 0;
-            if (Widgets.ButtonText(new Rect(x, 0, 120, 35), "MpTryResync".Translate()) && !rejoining)
-            {
-                rejoining = true;
-                Log.Message("Multiplayer: requesting rejoin");
-                Rejoiner.DoRejoin();
-            }
+            if (Widgets.ButtonText(new Rect(x, 0, 120, 35), "MpTryResync".Translate()))
+                TryResync();
 
             x += 120 + 10;
 
@@ -108,6 +109,29 @@ namespace Multiplayer.Client
                 desyncInfo.Save(hostInfo);
                 infoWritten = true;
             }
+
+            // Decide once, after the report is saved, so automatic resyncs never lose desync info.
+            if (infoWritten && !autoResyncDecided && !rejoining)
+            {
+                autoResyncDecided = true;
+                autoResyncing = Multiplayer.session is { desynced: true } session && session.autoResync.TryClaim();
+                if (autoResyncing) TryResync();
+            }
+        }
+
+        private void TryResync()
+        {
+            if (rejoining) return;
+            rejoining = true;
+            Log.Message("Multiplayer: requesting rejoin");
+            Rejoiner.DoRejoin();
+        }
+
+        private string AutoResyncStatus()
+        {
+            if (!Multiplayer.settings.autoResyncOnDesync || Multiplayer.session is not { desynced: true }) return null;
+            if (!autoResyncDecided || autoResyncing) return "Resyncing automatically" + MpUI.FixedEllipsis();
+            return "Automatic resync paused after repeated desyncs. Click Try resync.";
         }
     }
 

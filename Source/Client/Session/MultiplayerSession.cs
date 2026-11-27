@@ -45,6 +45,7 @@ namespace Multiplayer.Client
         public string joinDataDiff;
         // Standalone: set by the server when this client's sync opinions are the ones compared against
         public bool isSyncReference;
+        public readonly Desyncs.AutoResyncPolicy autoResync = new();
 
         public List<CSteamID> pendingSteam = new();
         // Steam join requests the host rejected, by time (Time.realtimeSinceStartup)
