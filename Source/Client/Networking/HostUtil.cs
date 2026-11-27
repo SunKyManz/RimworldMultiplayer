@@ -10,6 +10,7 @@ using Multiplayer.Client.Networking;
 using Multiplayer.Client.Patches;
 using Multiplayer.Client.Util;
 using Multiplayer.Common;
+using Multiplayer.Common.Networking.Packet;
 using RimWorld;
 using UnityEngine;
 using Verse;
@@ -107,6 +108,7 @@ namespace Multiplayer.Client
 
             Multiplayer.GameComp.asyncTime = settings.asyncTime;
             Multiplayer.GameComp.multifaction = settings.multifaction;
+            Multiplayer.GameComp.markerCapPerPlayer = PingMarkerCap.Clamp(settings.markerCapPerPlayer);
             Multiplayer.GameComp.debugMode = settings.debugMode;
             Multiplayer.GameComp.logDesyncTraces = settings.desyncTraces;
             Multiplayer.GameComp.pauseOnLetter = settings.pauseOnLetter;

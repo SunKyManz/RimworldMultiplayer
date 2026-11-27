@@ -6,7 +6,8 @@ namespace Multiplayer.Common
     public static class MpVersion
     {
         public const string SimpleVersion = "0.11.5";
-        public const int Protocol = 57;
+        // Bumped above dev's 57: this integration build adds #927's ping/marker packets.
+        public const int Protocol = 58;
 
         public static readonly string? GitHash = Assembly.GetExecutingAssembly()
             .GetCustomAttributes<AssemblyMetadataAttribute>()
