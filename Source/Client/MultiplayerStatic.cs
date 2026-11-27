@@ -490,6 +490,14 @@ namespace Multiplayer.Client
             if (GenCommandLine.TryGetCommandLineArg("replay", out string replay))
             {
                 GenCommandLine.TryGetCommandLineArg("replaydata", out string replayData);
+
+                // -replaynoise=seed:everyTicks runs UiNoise between ticks, imitating a busy player
+                string[] noiseArgs = GenCommandLine.TryGetCommandLineArg("replaynoise", out string noise) ? noise.Split(':') : null;
+
+                // -replaydump=tick,tick,... also writes every thing at those ticks (DeterminismFingerprint.Dump)
+                var dumpTicks = GenCommandLine.TryGetCommandLineArg("replaydump", out string dump)
+                    ? dump.Split(',').Select(int.Parse).ToHashSet()
+                    : new HashSet<int>();
                 var replays = replay.Split(';').ToList().GetEnumerator();
 
                 ClientUtil.DoubleLongEvent(() =>
@@ -515,7 +523,12 @@ namespace Multiplayer.Client
                         {
                             if (fingerprintFile != null)
                                 File.AppendAllText(fingerprintFile, DeterminismFingerprint.Capture() + "\n");
+                            if (fingerprintFile != null && dumpTicks.Contains(TickPatch.Timer))
+                                File.WriteAllText(Path.Combine(replayData, $"{current[0]}.things-{TickPatch.Timer}.txt"), DeterminismFingerprint.Dump());
                         }
+
+                        if (noiseArgs != null)
+                            UiNoise.Configure(int.Parse(noiseArgs[0]), noiseArgs.Length > 1 ? int.Parse(noiseArgs[1]) : 10);
 
                         Replay.LoadReplay(Replay.SavedReplayFile(current[1]), true, () =>
                         {
@@ -540,6 +553,9 @@ namespace Multiplayer.Client
                                             Log($"Map {map.uniqueID} rand: {map.AsyncTime().mapTicks}/{map.AsyncTime().randState}");
 
                                         File.WriteAllText(Path.Combine(replayData, $"{current[0]}"), output);
+
+                                        if (UiNoise.Enabled)
+                                            File.WriteAllText(Path.Combine(replayData, $"{current[0]}.noise"), UiNoise.Summary() + "\n");
                                     }
 
                                     LoadNextReplay();
@@ -549,7 +565,19 @@ namespace Multiplayer.Client
                                 OnMainThread.Enqueue(() =>
                                 {
                                     var watch = Stopwatch.StartNew();
-                                    TickPatch.DoTicks(batchSize);
+                                    if (UiNoise.Enabled)
+                                    {
+                                        // Same ticks per batch as without noise, so fingerprints line up
+                                        for (int done = 0; done < batchSize; done += UiNoise.EveryTicks)
+                                        {
+                                            UiNoise.Run();
+                                            TickPatch.DoTicks(Math.Min(UiNoise.EveryTicks, batchSize - done));
+                                        }
+                                    }
+                                    else
+                                    {
+                                        TickPatch.DoTicks(batchSize);
+                                    }
                                     timeSpent += watch.Elapsed.TotalMilliseconds;
                                     ticksDone += batchSize;
                                     TickBatch();
