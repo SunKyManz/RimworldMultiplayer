@@ -86,6 +86,7 @@ namespace Multiplayer.Common
 
             ServerPlayer player = conn.serverPlayer;
             Players.Remove(player);
+            server.ClearMidJoinMarkerBuffer(player.id);
 
             server.worldData.OnPlayerUnavailable(player, "disconnected");
             UpdateSyncReference();
