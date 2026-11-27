@@ -32,6 +32,7 @@ public static class Loader
         {
             LongEventHandler.QueueLongEvent(() =>
             {
+                Current.Game?.Dispose();
                 MemoryUtility.ClearAllMapsAndWorld();
                 Current.Game = new Game
                 {
