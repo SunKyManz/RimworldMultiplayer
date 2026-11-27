@@ -27,9 +27,12 @@ static class UnsyncedSpawnTripwire
         if (__instance.thingIDNumber >= 0 && !Multiplayer.InInterface)
             return;
 
+        var stack = Environment.StackTrace;
+        Multiplayer.session?.unsyncedSpawns.Record(__instance.def.defName, __instance.thingIDNumber, TickPatch.Timer, stack);
+
         Log.WarningOnce(
             $"MP: {__instance.def.defName} (id {__instance.thingIDNumber}) spawned outside the synced simulation - " +
-            $"an unsynced mod action is diverging this client. Stack: {Environment.StackTrace}",
+            $"an unsynced mod action is diverging this client. Stack: {stack}",
             __instance.def.shortHash ^ 0x51DE);
     }
 }

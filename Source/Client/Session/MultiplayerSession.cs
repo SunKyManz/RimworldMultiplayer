@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Diagnostics;
 using Multiplayer.Client.Networking;
 using Multiplayer.Client.Util;
@@ -41,6 +41,8 @@ namespace Multiplayer.Client
         // Caught exceptions in synced commands and ticks, see SimulationFailures
         public int simulationFailures;
         public string firstSimulationFailure;
+        // Things spawned outside the synced simulation, see UnsyncedSpawnTripwire
+        public readonly Desyncs.UnsyncedSpawnLog unsyncedSpawns = new();
         // Set when the player connected despite mismatched game data
         public string joinDataDiff;
         // Standalone: set by the server when this client's sync opinions are the ones compared against

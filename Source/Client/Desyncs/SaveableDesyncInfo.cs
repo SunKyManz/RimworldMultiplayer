@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
@@ -45,6 +45,7 @@ public class SaveableDesyncInfo(
 
             zip.AddEntry("local_traces.txt", GetLocalTraces());
             zip.AddEntry("host_traces.txt", hostInfo?.Traces ?? "No host traces");
+            zip.AddEntry("unsynced_spawns.txt", Multiplayer.session.unsyncedSpawns.Report());
 
             var extraLogs = LogGenerator.PrepareLogData();
             if (extraLogs != null) zip.AddEntry("local_logs.txt", extraLogs);
@@ -129,6 +130,7 @@ public class SaveableDesyncInfo(
             .AppendLine($"Loading Errors - Client|||{Multiplayer.loadingErrorCount}")
             .AppendLine($"Skipped Simulation Errors - Client|||{Multiplayer.session.simulationFailures}")
             .AppendLine($"First Simulation Error - Client|||{Multiplayer.session.firstSimulationFailure ?? "none"}")
+            .AppendLine($"Unsynced Spawns - Client|||{Multiplayer.session.unsyncedSpawns.Summary()}")
             .AppendLine("\n###Server Info###")
             .AppendLine($"Player Count|||{Multiplayer.session.players.Count}")
             .AppendLine($"Async time active|||{Multiplayer.GameComp.asyncTime}")
