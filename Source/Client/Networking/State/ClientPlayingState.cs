@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using Ionic.Zlib;
@@ -184,20 +184,18 @@ namespace Multiplayer.Client
                 var info = Multiplayer.game.sync.knownClientOpinions.FirstOrDefault(b => b.startTick == packet.tick);
                 var response = info?.GetFormattedStackTracesForRange(packet.diffAt) ?? "Traces not available";
 
-                // Fragmented: the traces and jitted methods can exceed the single packet limit, which would throw
+                // Fragmented: the traces can exceed the single packet limit, which would throw
                 // in this handler and disconnect this client (on standalone, the sync reference)
                 connection.SendFragmented(new ClientTracesPacket
                     {
                         playerId = packet.playerId,
-                        rawTraces = GZipStream.CompressString(response),
-                        rawJittedMethods = GZipStream.CompressString(JittedMethods.GetJittedMethodsString())
+                        rawTraces = GZipStream.CompressString(response)
                     }.Serialize());
             }
             else if (packet.mode == ServerTracesPacket.Mode.Transfer)
             {
                 var traces = GZipStream.UncompressString(packet.rawTraces);
-                var jittedMethods = GZipStream.UncompressString(packet.rawJittedMethods);
-                var hostInfo = new SaveableDesyncInfo.HostInfo(traces, jittedMethods);
+                var hostInfo = new SaveableDesyncInfo.HostInfo(traces);
                 Find.WindowStack.WindowOfType<DesyncedWindow>()?.HandleHostDesyncInfo(hostInfo);
             }
         }

@@ -4,6 +4,7 @@ using System.Linq;
 using Ionic.Zlib;
 using Multiplayer.Client.Patches;
 using Multiplayer.Client.Saving;
+using Multiplayer.Client.Patches;
 using Multiplayer.Common;
 using Verse;
 
@@ -131,7 +132,10 @@ public class ClientLoadingState(ConnectionBase connection) : ClientBaseState(con
 
         TickPatch.SetSimulation(
             toTickUntil: true,
-            onFinish: () => Multiplayer.Client.Send(Packets.Client_WorldReady),
+            onFinish: () =>
+            {
+                Multiplayer.Client.Send(Packets.Client_WorldReady);
+            },
             cancelButtonKey: "Quit",
             onCancel: GenScene.GoToMainMenu // Calls StopMultiplayer through a patch
         );

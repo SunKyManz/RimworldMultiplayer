@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using Multiplayer.Common.Networking.Packet;
@@ -47,7 +47,7 @@ namespace Multiplayer.Common
             // The traces are up to ClientTracesPacket.MaxLength; a single packet over the limit would throw here and
             // disconnect the sender
             Server.GetPlayer(packet.playerId)?.conn.SendFragmented(
-                ServerTracesPacket.Transfer(packet.rawTraces, packet.rawJittedMethods).Serialize());
+                ServerTracesPacket.Transfer(packet.rawTraces).Serialize());
         }
 
         [TypedPacketHandler]

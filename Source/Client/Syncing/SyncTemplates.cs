@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -39,13 +39,7 @@ namespace Multiplayer.Client
                 if (pInfo.IsOut) {
                     pType = pType.GetElementType();
                     yield return new CodeInstruction(OpCodes.Ldarg, argIndex);
-                    if (AccessTools.IsClass(pType)) {
-                        yield return new CodeInstruction(OpCodes.Ldnull);
-                        yield return new CodeInstruction(OpCodes.Stind_Ref);
-                    } else {
-                        // Zeroes the value type at the address with its real size (unlike stind.i4 for e.g. bool)
-                        yield return new CodeInstruction(OpCodes.Initobj, pType);
-                    }
+                    yield return new CodeInstruction(OpCodes.Initobj, pType);
                 }
             }
 
@@ -89,22 +83,21 @@ namespace Multiplayer.Client
         // Pushes the default value of the type (nothing for void)
         static IEnumerable<CodeInstruction> CreateDefaultCodes(ILGenerator generator, Type type)
         {
+            if (type == typeof(void)) yield break;
             if (type.IsByRef)
                 type = type.GetElementType();
 
-            if (type == typeof(void))
-                yield break;
-
-            if (AccessTools.IsClass(type)) {
+            if (!type.IsValueType) {
                 yield return new CodeInstruction(OpCodes.Ldnull);
                 yield break;
             }
-
-            // Any value type (struct, enum, primitive): zero a local and load it
-            var v = generator.DeclareLocal(type);
-            yield return new CodeInstruction(OpCodes.Ldloca, v);
-            yield return new CodeInstruction(OpCodes.Initobj, type);
-            yield return new CodeInstruction(OpCodes.Ldloc, v);
+            if (type.IsValueType) {
+                var v = generator.DeclareLocal(type);
+                yield return new CodeInstruction(OpCodes.Ldloca, v);
+                yield return new CodeInstruction(OpCodes.Initobj, type);
+                yield return new CodeInstruction(OpCodes.Ldloc, v);
+                yield break;
+            }
         }
 
     }

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq;
@@ -27,6 +27,7 @@ namespace Multiplayer.Client
         {
             Log.Message("Starting the server");
 
+            VTRSync.Reset();
             CreateSession(settings);
 
             if (!fromReplay)
