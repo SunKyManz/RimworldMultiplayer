@@ -267,7 +267,7 @@ namespace Multiplayer.Common
         public void Disconnect(MpDisconnectReason reason, byte[]? data = null) =>
             OnClose(new ServerDisconnectPacket { reason = reason, data = data ?? [] });
 
-        public virtual void CloseReplacedBy(ConnectionBase replacement, MpDisconnectReason reason) => Close(reason);
+        public virtual void CloseReplacedBy(ConnectionBase replacement, MpDisconnectReason reason) => Disconnect(reason);
 
         protected abstract void OnClose(ServerDisconnectPacket? goodbye);
 
