@@ -379,7 +379,11 @@ sealed class Analysis
 
         bool IsFreshReceiver(Instruction receiver)
         {
-            if (receiver.OpCode.Code == Code.Newobj) return true;
+            if (IsFreshValue(receiver)) return true;
+            // A struct on the stack (a local, or a parameter passed by value) is a copy
+            if (receiver.OpCode.Code is Code.Ldloca or Code.Ldloca_S) return true;
+            if (receiver.OpCode.Code is Code.Ldarga or Code.Ldarga_S && receiver.Operand is ParameterDefinition pd &&
+                pd.ParameterType is not ByReferenceType) return true;
             if (LocalIndex(receiver) is int idx && freshLocals.Contains(idx)) return true;
             // Locals hoisted into an iterator or closure class
             if (receiver.OpCode.Code == Code.Ldfld && model.Field((FieldReference)receiver.Operand) is { } hf &&
@@ -444,6 +448,9 @@ sealed class Analysis
         if (t.FullName == "Verse.Rand") return null; // reported as Rand at the call site
         if (t.Name == "UniqueIDsManager") return SinkKind.IdAllocation;
         if (stateTypes.IsInterfaceOrVisual(t)) return null;
+        // A field holding a gizmo, graphic or material (a cached Command, say) is interface state even on a simulation object
+        if (model.Type(fd.FieldType) is { } ftype && stateTypes.IsInterfaceOrVisual(ftype)) return null;
+        if (fd.FieldType.Namespace.StartsWith("UnityEngine")) return null;
 
         if (isStatic || fd.IsStatic) return options.IncludeStatics ? SinkKind.StaticWrite : null;
         if (!stateTypes.IsState(t)) return null;
@@ -552,6 +559,8 @@ sealed class Analysis
 
     static bool IsFreshValue(Instruction p) =>
         p != null && (p.OpCode.Code == Code.Newobj ||
+            // Pooled objects (JobMaker takes jobs from SimplePool<Job>) are handed out unused
+            (p.Operand is MethodReference pool && pool.Name == "Get" && pool.DeclaringType.Name.StartsWith("SimplePool")) ||
             (p.OpCode.Code is Code.Call && p.Operand is MethodReference mr && mr.ReturnType.MetadataType != MetadataType.Void &&
              FactoryPrefixes.Any(x => mr.Name.StartsWith(x)) && !mr.HasThis));
 

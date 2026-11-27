@@ -27,7 +27,11 @@ sealed class MpKnowledge
         var module = model.Load(path, analyzed: false);
         foreach (var t in module.GetTypes())
         {
-            try { k.ReadPatchAttributes(t); }
+            try
+            {
+                k.ReadPatchAttributes(t);
+                k.ReadMpPatchAttributes(t);
+            }
             catch (AssemblyResolutionException) { k.UnreadablePatches++; }
             foreach (var m in t.Methods)
                 if (m.HasBody) k.ReadSyncRegistrations(m);
@@ -53,10 +57,33 @@ sealed class MpKnowledge
 
         if (target == null || (method == null && methodType != 3))
         {
-            if (t.Methods.Any(m => m.Name is "TargetMethod" or "TargetMethods")) PatchesWithComputedTargets++;
+            var computed = t.Methods.Where(m => m.Name is "TargetMethod" or "TargetMethods" && m.HasBody).ToList();
+            if (computed.Count == 0) return;
+            // yield return AccessTools.Method(typeof(X), nameof(Y)): take each type token followed by a name
+            int found = 0;
+            foreach (var m in computed)
+            {
+                TypeReference lastType = null;
+                foreach (var ins in m.Body.Instructions)
+                {
+                    if (ins.OpCode.Code == Code.Ldtoken && ins.Operand is TypeReference tr) lastType = tr;
+                    else if (ins.OpCode.Code == Code.Ldstr && lastType != null)
+                    {
+                        AddPatch(lastType, (string)ins.Operand, 0, t);
+                        found++;
+                        lastType = null;
+                    }
+                }
+            }
+            if (found == 0) PatchesWithComputedTargets++;
             return;
         }
 
+        AddPatch(target, method, methodType, t);
+    }
+
+    void AddPatch(TypeReference target, string method, int methodType, TypeDefinition patchClass)
+    {
         var name = methodType switch
         {
             1 => "get_" + method,
@@ -66,7 +93,24 @@ sealed class MpKnowledge
         };
         var key = $"{target.FullName}::{name}";
         if (!Patches.TryGetValue(key, out var list)) Patches[key] = list = [];
-        list.Add(CodeModel.ShortType(t));
+        var label = CodeModel.ShortType(patchClass);
+        if (!list.Contains(label)) list.Add(label);
+    }
+
+    /// <summary>The mod's own [MpPrefix(typeof(X), "Y")] style attributes on patch methods.</summary>
+    void ReadMpPatchAttributes(TypeDefinition t)
+    {
+        foreach (var m in t.Methods)
+            foreach (var a in m.CustomAttributes)
+            {
+                if (!a.AttributeType.Name.StartsWith("Mp") || !a.AttributeType.Name.Contains("fix") && !a.AttributeType.Name.Contains("Transpiler"))
+                    continue;
+                var type = a.ConstructorArguments.Select(x => x.Value).OfType<TypeReference>().FirstOrDefault();
+                var name = a.ConstructorArguments.Select(x => x.Value).OfType<string>().FirstOrDefault();
+                if (type == null || name == null) continue;
+                var methodType = a.ConstructorArguments.FirstOrDefault(x => x.Type.Name == "MethodType").Value is int mt ? mt : 0;
+                AddPatch(type, name, methodType, t);
+            }
     }
 
     void ReadSyncRegistrations(MethodDefinition m)

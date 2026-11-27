@@ -103,13 +103,6 @@ static class Program
         var mp = MpKnowledge.Load(model, o.MpDll);
         Console.WriteLine($"Multiplayer.dll: {mp.Patches.Count} patch targets, {mp.SyncMethods.Count / 2} sync methods, {mp.SyncFieldNames.Count} sync field names ({o.MpDll ?? "none"})");
 
-        var state = new StateTypes(model, ignore);
-        var analysis = new Analysis(model, state, mp, ignore, o);
-        Console.WriteLine($"{state.Count} simulation state types, {analysis.SavedFieldCount} saved fields");
-
-        var findings = analysis.Run();
-        Console.WriteLine($"Visited {analysis.Visited} method states from {analysis.EntriesByCategory.Values.Sum()} entry points in {watch.Elapsed.TotalSeconds:F1}s");
-
         if (o.Il != null)
         {
             int sep = o.Il.LastIndexOf('.');
@@ -117,13 +110,20 @@ static class Program
             var typePart = o.Il[..sep];
             var types = model.AllTypes.Where(t => t.FullName == typePart || t.Name == typePart).ToList();
             if (types.Count == 0) types = model.AllTypes.Where(t => t.FullName.Contains(typePart, StringComparison.Ordinal)).ToList();
-            foreach (var m in types.SelectMany(t => t.Methods).Where(x => x.Name == o.Il[(sep + 1)..] && x.HasBody))
+            foreach (var m in types.SelectMany(t => t.Methods).Where(x => (x.Name == o.Il[(sep + 1)..] || o.Il[(sep + 1)..] == "*") && x.HasBody))
             {
                 Console.WriteLine(m.FullName);
                 foreach (var ins in m.Body.Instructions) Console.WriteLine($"  {ins}");
             }
             return 0;
         }
+
+        var state = new StateTypes(model, ignore);
+        var analysis = new Analysis(model, state, mp, ignore, o);
+        Console.WriteLine($"{state.Count} simulation state types, {analysis.SavedFieldCount} saved fields");
+
+        var findings = analysis.Run();
+        Console.WriteLine($"Visited {analysis.Visited} method states from {analysis.EntriesByCategory.Values.Sum()} entry points in {watch.Elapsed.TotalSeconds:F1}s");
 
         if (o.Why != null)
         {
