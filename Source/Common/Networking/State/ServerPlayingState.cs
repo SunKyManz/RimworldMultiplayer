@@ -244,7 +244,7 @@ namespace Multiplayer.Common
         [TypedPacketHandler]
         public void HandleDebug(ClientDebugPacket _)
         {
-            if (!Server.commands.CanUseDevMode(Player))
+            if (!Server.commands.RequireDevModeOrNotify(Player))
                 return;
 
             Server.worldData.cmds.Clear();
