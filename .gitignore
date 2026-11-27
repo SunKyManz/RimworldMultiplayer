@@ -283,3 +283,6 @@ PersonalDefinitions.targets
 !Source/Client/Debug/
 
 /Source/mpdb
+
+# Output of Tools/Check-Determinism.ps1
+/determinism-runs/

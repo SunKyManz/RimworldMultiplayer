@@ -508,12 +508,23 @@ namespace Multiplayer.Client
                         int ticksDone = 0;
                         double timeSpent = 0;
 
+                        // One fingerprint per batch, appended as we go so a crashed run still shows how far it got.
+                        string fingerprintFile = replayData.NullOrEmpty() ? null : Path.Combine(replayData, $"{current[0]}.ticks");
+                        if (fingerprintFile != null) File.Delete(fingerprintFile);
+                        void WriteFingerprint()
+                        {
+                            if (fingerprintFile != null)
+                                File.AppendAllText(fingerprintFile, DeterminismFingerprint.Capture() + "\n");
+                        }
+
                         Replay.LoadReplay(Replay.SavedReplayFile(current[1]), true, () =>
                         {
                             TickPatch.AllTickables.Do(t => t.DesiredTimeSpeed = TimeSpeed.Normal);
 
                             void TickBatch()
                             {
+                                WriteFingerprint();
+
                                 if (ticksDone >= totalTicks)
                                 {
                                     if (!replayData.NullOrEmpty())
