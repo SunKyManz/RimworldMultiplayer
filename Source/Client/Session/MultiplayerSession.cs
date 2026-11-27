@@ -39,6 +39,7 @@ namespace Multiplayer.Client
         public bool showTimeline;
 
         public bool desynced;
+        public readonly Desyncs.AutoResyncPolicy autoResync = new();
 
         public List<CSteamID> pendingSteam = new();
         public List<CSteamID> knownUsers = new();

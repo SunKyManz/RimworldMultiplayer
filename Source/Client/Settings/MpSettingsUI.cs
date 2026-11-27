@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Multiplayer.Client.Desyncs;
 using Multiplayer.Client.Util;
 using Multiplayer.Common;
 using UnityEngine;
@@ -127,6 +128,11 @@ public static class MpSettingsUI
             DesyncTracingMode.Slow => "Slow: Detailed stacks (high CPU/memory cost).",
             _ => "Fast: Context only (recommended)."
         }, tooltip: "Desync detection stays enabled in every mode. Fast records event context without call stacks. Slow captures a managed stack for each eligible event and can significantly increase CPU and memory usage.");
+
+        listing.CheckboxLabeled("Resync automatically after a desync", ref settings.autoResyncOnDesync,
+            $"After a desync, save the desync report and reload from the host's state without clicking Try resync. " +
+            $"Stops after {AutoResyncPolicy.MaxResyncs} automatic resyncs in {AutoResyncPolicy.WindowSeconds / 60:0} minutes, " +
+            "so a desync that keeps coming back shows the normal window.");
 
         if (Prefs.DevMode)
         {
