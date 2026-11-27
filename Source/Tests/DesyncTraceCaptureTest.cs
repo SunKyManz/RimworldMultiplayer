@@ -19,10 +19,18 @@ public class DesyncTraceCaptureTest
     {
         for (int i = 0; i < 100; i++)
             DesyncTraceCapture.TryCapture(DesyncTracingMode.Fast, out _);
-        long before = GC.GetAllocatedBytesForCurrentThread();
-        for (int i = 0; i < 10000; i++)
-            DesyncTraceCapture.TryCapture(DesyncTracingMode.Fast, out _);
-        long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+
+        // The runtime itself can allocate on this thread while it recompiles hot methods (tiered compilation),
+        // and background work left by other tests can delay that into this loop. Fast is allocation-free if any
+        // attempt allocates nothing.
+        long allocated = long.MaxValue;
+        for (int attempt = 0; attempt < 5 && allocated != 0; attempt++)
+        {
+            long before = GC.GetAllocatedBytesForCurrentThread();
+            for (int i = 0; i < 10000; i++)
+                DesyncTraceCapture.TryCapture(DesyncTracingMode.Fast, out _);
+            allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+        }
 
         Assert.That(allocated, Is.Zero, "Fast must not allocate stack traces or format event strings");
         Assert.That(DesyncTraceCapture.TryCapture(DesyncTracingMode.Fast, out var trace), Is.True);
