@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using System.Net;
 using LiteNetLib;
 using Multiplayer.Common;
 
@@ -161,6 +162,56 @@ public class ServerTest
                 Assert.Fail($"{label} timed out after {watch.ElapsedMilliseconds} ms " +
                             $"({polls} polls, budget {timeoutMs} ms); observed {state}");
             }
+
+            Thread.Sleep(50);
+        }
+    }
+
+    [Test]
+    public void JoinFromSameAddress_ReplacesPlayerHoldingTheUsername()
+    {
+        var server = MakeServer(out var port);
+        var stalePlayer = AddPlayerHoldingTestUsername(server, IPAddress.Loopback);
+
+        ConnectClient(port, typeof(TestUsernameOnlyState));
+
+        WaitUntil(() => !server.playerManager.Players.Contains(stalePlayer),
+            "the connection at the same address was not replaced");
+        Assert.That(server.playerManager.GetPlayer("test1"), Is.Not.Null);
+    }
+
+    [Test]
+    public void JoinFromDifferentAddress_KeepsPlayerHoldingTheUsername()
+    {
+        var server = MakeServer(out var port);
+        var existingPlayer = AddPlayerHoldingTestUsername(server, IPAddress.Parse("10.0.0.1"));
+
+        ConnectClient(port, typeof(TestUsernameOnlyState));
+
+        // Nothing should displace them, so give the join time to go wrong before checking.
+        Thread.Sleep(500);
+
+        Assert.That(server.playerManager.Players.Contains(existingPlayer), Is.True);
+    }
+
+    // Stands in for a player whose client is gone but whose connection the server still holds.
+    private static ServerPlayer AddPlayerHoldingTestUsername(MultiplayerServer server, IPAddress address)
+    {
+        var conn = new RecordingConnection("test1") { remoteIdentity = address };
+        conn.ChangeState(ConnectionStateEnum.ServerPlaying);
+        var player = new ServerPlayer(100, conn);
+        conn.serverPlayer = player;
+        server.playerManager.Players.Add(player);
+        return player;
+    }
+
+    private static void WaitUntil(Func<bool> condition, string message)
+    {
+        var timeoutWatch = Stopwatch.StartNew();
+        while (!condition())
+        {
+            if (timeoutWatch.ElapsedMilliseconds > 2000)
+                Assert.Fail($"Timeout: {message}");
 
             Thread.Sleep(50);
         }

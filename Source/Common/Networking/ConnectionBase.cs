@@ -12,6 +12,8 @@ namespace Multiplayer.Common
 
         public virtual int Latency { get; set; }
 
+        public virtual object? RemoteIdentity => null;
+
         public ConnectionStateEnum State { get; private set; }
         public MpConnectionState? StateObj { get; private set; }
         // If lenient is set, reliable packets without handlers are ignored instead of throwing an exception.
@@ -264,6 +266,8 @@ namespace Multiplayer.Common
         /// reason in disconnect data because it discards queued packets; Steam sends it as a packet.
         public void Disconnect(MpDisconnectReason reason, byte[]? data = null) =>
             OnClose(new ServerDisconnectPacket { reason = reason, data = data ?? [] });
+
+        public virtual void CloseReplacedBy(ConnectionBase replacement, MpDisconnectReason reason) => Close(reason);
 
         protected abstract void OnClose(ServerDisconnectPacket? goodbye);
 

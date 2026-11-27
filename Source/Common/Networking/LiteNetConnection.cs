@@ -7,6 +7,11 @@ namespace Multiplayer.Common
     {
         public readonly NetPeer peer = peer;
 
+        // Only a hint at who the remote is: players behind one NAT share an address, so a housemate
+        // can match; and a player whose address changed (mobile, VPN, or v4 vs v6 across the two
+        // NetManagers) won't match their own earlier connection.
+        public override object? RemoteIdentity => peer.Address;
+
         /// <summary>
         /// Sends without first checking the peer's transport state. That state changes on LiteNetLib's
         /// own thread, so it can go stale between <see cref="ConnectionBase.Send"/> approving the send
