@@ -1,0 +1,27 @@
+# Left out of the interface side-effects analysis. Each entry needs a reason.
+#   type:Full.Name             the type's fields and methods (writes to it aren't reported, calls into it aren't followed)
+#   namespace:Some.Namespace   every type in it
+#   field:Full.Type::field     writes to this field
+#   method:Full.Type::Method   calls to this method aren't followed (all overloads)
+
+# Interface state each client owns
+type:RimWorld.Selector
+type:RimWorld.PlaySettings
+type:Verse.Prefs
+type:Verse.CameraDriver
+type:RimWorld.Targeter
+type:Verse.DesignatorManager
+type:Verse.UIRoot
+type:RimWorld.UIRoot_Play
+type:RimWorld.MainButtonsRoot
+type:RimWorld.ColonistBar
+type:Verse.WindowStack
+type:Verse.TooltipHandler
+type:Verse.Messages
+type:Verse.Log
+
+# Writing to the log or showing an error isn't simulation state
+method:Verse.Log::Error
+method:Verse.Log::ErrorOnce
+method:Verse.Log::Warning
+method:Verse.Log::Message
