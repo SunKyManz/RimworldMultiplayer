@@ -37,11 +37,11 @@ public static partial class SyncRituals
         register(
             nameof(PawnRoleSelectionWidgetBase<RitualRole>.TryAssignAnyRole),
             typeof(PawnRitualRoleSelectionWidget),
-            null);
+            method => method.SetPreInvoke(RefreshRoleGroups<RitualRole>));
         register(
             nameof(PawnRoleSelectionWidgetBase<PsychicRitualRoleDef>.TryAssignAnyRole),
             typeof(PawnPsychicRitualRoleSelectionWidget),
-            null);
+            method => method.SetPreInvoke(RefreshRoleGroups<PsychicRitualRoleDef>));
 
         register(
             nameof(PawnRoleSelectionWidgetBase<RitualRole>.TryAssign),
@@ -73,14 +73,21 @@ public static partial class SyncRituals
                 nameof(PawnRoleSelectionWidgetBase<RitualRole>.DrawPawnListInternal),
                 lambdaOrdinal: 2).Name,
             typeof(PawnRitualRoleSelectionWidget),
-            null); // Not participating left click delegate (try assign any role or spectate)
+            method => method.SetPreInvoke(RefreshRoleGroups<RitualRole>)); // Not participating left click delegate (try assign any role or spectate)
         register(
             MpMethodUtil.GetLambda(
                 typeof(PawnRoleSelectionWidgetBase<ILordJobRole>),
                 nameof(PawnRoleSelectionWidgetBase<PsychicRitualRoleDef>.DrawPawnListInternal),
                 lambdaOrdinal: 2).Name,
             typeof(PawnPsychicRitualRoleSelectionWidget),
-            null); // Not participating left click delegate (try assign any role or spectate)
+            method => method.SetPreInvoke(RefreshRoleGroups<PsychicRitualRoleDef>)); // Not participating left click delegate (try assign any role or spectate)
+    }
+
+    // rolesGroupedTmp is only filled when the dialog is drawn, so it's empty on clients that don't have it open.
+    private static void RefreshRoleGroups<RoleType>(object target, object[] _) where RoleType : class, ILordJobRole
+    {
+        PawnRoleSelectionWidgetBase<RoleType>.rolesGroupedTmp.Clear();
+        PawnRoleSelectionWidgetBase<RoleType>.rolesGroupedTmp.AddRange(((PawnRoleSelectionWidgetBase<RoleType>)target).assignments.RoleGroups());
     }
 
     private static (WidgetType roleSelectionWidget, string Key) RitualRoleWriter<WidgetType, RoleType>(IEnumerable<RoleType> roles, object target, object[] _)
